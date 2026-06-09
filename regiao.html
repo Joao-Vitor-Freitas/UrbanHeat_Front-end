@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <title>UrbanHeat - Detalhes</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <div class="site-header fade-in">
+    <div class="header-top">
+      <div>
+        <h1 class="site-title" id="region-name">Carregando…</h1>
+        <p class="site-subtitle">Histórico térmico, indicadores e previsão de tendência</p>
+      </div>
+      <div class="live-indicator">
+        <div class="live-dot"></div>
+        TEMPO REAL
+      </div>
+    </div>
+  </div>
+
+  <div class="container fade-in">
+    <a href="index.html" class="back-link">Voltar ao Ranking</a>
+
+    <div class="heatscore-big">
+      <div class="heatscore-circle" id="hs-circle">
+        <span class="heatscore-num" id="heatscore-val">—</span>
+        <span class="heatscore-tag">HeatScore</span>
+      </div>
+      <div class="heatscore-info">
+        <h2 id="hs-class">—</h2>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Temp. Média</div>
+        <div class="stat-value"><span id="temp-val">—</span>°C</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Umidade Média</div>
+        <div class="stat-value"><span id="hum-val">—</span>%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Frequência Crítica</div>
+        <div class="stat-value"><span id="freq-val">—</span>%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Duração Crítica</div>
+        <div class="stat-value"><span id="dur-val">—</span>%</div>
+      </div>
+    </div>
+
+    <div class="tendencia-panel">
+      <div class="tendencia-main">
+        <div class="tendencia-label">Análise de Tendência — Regressão Linear</div>
+        <div class="tendencia-value" id="trend-val">—</div>
+        <div class="tendencia-orientacao" id="trend-desc">—</div>
+      </div>
+      <div>
+        <div class="tendencia-label">Previsão próximas leituras</div>
+        <div class="previsao-list" id="forecast-list"></div>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="card">
+        <div class="card-title">Histórico de Temperatura</div>
+        <div class="chart-wrap" style="height: 300px;"><canvas id="tempChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Histórico de Umidade</div>
+        <div class="chart-wrap" style="height: 300px;"><canvas id="humChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    ODS 11 · ODS 13 — Monitor Térmico Urbano
+  </footer>
+
+  <script src="regiao.js"></script>
+</body>
+
+</html>

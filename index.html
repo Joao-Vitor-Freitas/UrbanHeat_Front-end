@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <title>UrbanHeat - Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <div class="site-header fade-in">
+    <div class="header-top">
+      <div>
+        <div class="header-badge">Sistema de Monitoramento Ativo</div>
+        <h1 class="site-title">UrbanHeat</h1>
+        <h3 class="site-title2">Ilhas de Calor Urbanas</h3>
+        <p class="site-subtitle">Mapeamento térmico para planejamento ambiental e redução de calor extremo</p>
+      </div>
+      <div class="live-indicator">
+        <div class="live-dot"></div>
+        DADOS AO VIVO
+      </div>
+    </div>
+    <div class="header-divider"></div>
+  </div>
+
+  <div class="container fade-in">
+    <div style="display: flex; gap: 16px; margin-bottom: 32px;">
+      <a href="index.html" class="header-badge" style="background: #00b4ff33;">📊 Ranking</a>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Regiões Monitoradas</div>
+        <div class="stat-value" id="total-regions">—</div>
+        <div class="stat-unit">regiões ativas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Maior HeatScore</div>
+        <div class="stat-value" id="highest-heatscore">—</div>
+        <div class="stat-unit" id="highest-heatscore-region">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Regiões Críticas</div>
+        <div class="stat-value" id="critical-regions">—</div>
+        <div class="stat-unit">score acima de 75</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Última Atualização</div>
+        <div class="stat-value" style="font-size: 18px;" id="last-update">—</div>
+        <div class="stat-unit">horário local</div>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="card">
+        <div class="card-title">HeatScore por Região</div>
+        <div class="chart-wrap" style="height: 300px;">
+          <canvas id="heatscoreChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Ranking de Criticidade Térmica</div>
+        <div class="ranking-grid" id="ranking-container">
+          <div class="ranking-row header-row">
+            <span>#</span>
+            <span>Região</span>
+            <span style="text-align: center;">Score</span>
+            <span>Intensidade</span>
+            <span style="text-align: center;">Nível</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    ODS 11 · ODS 13 — Monitor Térmico Urbano · Atualiza a cada 30s
+  </footer>
+  <script src="dashboard.js"></script>
+</body>
+
+</html>
