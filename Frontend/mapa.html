@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapa Térmico — Porto Alegre</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    /* ── MAPA PAGE SPECIFIC ── */
+    #map-container {
+      position: relative;
+      z-index: 1;
+    }
+
+    .map-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .map-layout { grid-template-columns: 1fr; }
+    }
+
+    .map-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+
+    .map-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    #leaflet-map {
+      width: 100%;
+      height: 500px;
+      background: #020b18;
+    }
+
+    @media (max-width: 600px) {
+      #leaflet-map { height: 340px; }
+    }
+
+    /* Legenda */
+    .legenda-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      backdrop-filter: blur(12px);
+    }
+
+    .legenda-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legenda-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 12px;
+      background: var(--accent-blue);
+      border-radius: 2px;
+    }
+
+    .legenda-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .legenda-item:last-child { border-bottom: none; }
+
+    .legenda-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+
+    .legenda-info { flex: 1; }
+
+    .legenda-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .legenda-range {
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* Painel de região selecionada */
+    .regiao-panel {
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glow);
+      border-radius: var(--radius);
+      display: none;
+    }
+
+    .regiao-panel.visible { display: block; }
+
+    .regiao-panel-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      margin-bottom: 12px;
+    }
+
+    .regiao-panel-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .rp-metric {
+      background: var(--bg-card);
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .rp-label {
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .rp-value {
+      font-family: 'Orbitron', monospace;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .rp-link {
+      display: block;
+      margin-top: 12px;
+      text-align: center;
+      padding: 8px;
+      background: #00b4ff11;
+      border: 1px solid var(--accent-blue);
+      border-radius: 8px;
+      color: var(--accent-blue);
+      text-decoration: none;
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      transition: background 0.2s;
+    }
+
+    .rp-link:hover { background: #00b4ff22; }
+
+    /* Tabs */
+    .map-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 0 24px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .map-tab {
+      padding: 6px 16px;
+      border-radius: 100px;
+      font-family: 'Orbitron', monospace;
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      background: transparent;
+      transition: all 0.2s;
+    }
+
+    .map-tab.active {
+      background: #00b4ff11;
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    /* Leaflet custom dark theme */
+    .leaflet-container {
+      background: #020b18 !important;
+      font-family: 'Exo 2', sans-serif;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: #041428ee !important;
+      border: 1px solid #0e4a7a !important;
+      border-radius: 12px !important;
+      box-shadow: 0 0 20px #00b4ff22 !important;
+      color: #e8f4ff !important;
+    }
+
+    .leaflet-popup-tip {
+      background: #041428ee !important;
+    }
+
+    .leaflet-popup-content {
+      margin: 12px 16px !important;
+      font-family: 'Exo 2', sans-serif !important;
+    }
+
+    .popup-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #00ffe7;
+      margin-bottom: 8px;
+    }
+
+    .popup-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 3px 0;
+      color: #7aaecf;
+      gap: 16px;
+    }
+
+    .popup-row span:last-child {
+      font-family: 'Orbitron', monospace;
+      color: #e8f4ff;
+    }
+
+    .popup-score {
+      margin-top: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      text-align: center;
+      font-family: 'Orbitron', monospace;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .leaflet-control-zoom a {
+      background: #041428ee !important;
+      border-color: #0e4a7a !important;
+      color: #7aaecf !important;
+    }
+
+    .leaflet-control-zoom a:hover {
+      background: #0a2a4aee !important;
+      color: #00b4ff !important;
+    }
+
+    .leaflet-control-attribution {
+      background: #020b18aa !important;
+      color: #3a6a8a !important;
+      font-size: 9px !important;
+    }
+
+    .leaflet-control-attribution a { color: #3a6a8a !important; }
+
+    /* Nav adicional */
+    .map-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .map-nav a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-family: 'Orbitron', monospace;
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+
+    .map-nav a:hover, .map-nav a.active {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+      background: #00b4ff0d;
+    }
+
+    /* RS map overlay info */
+    .rs-info {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="scanline"></div>
+
+<header class="site-header">
+  <div class="header-badge">Mapa Térmico Interativo</div>
+  <div class="header-top">
+    <div>
+      <h1 class="site-title">Mapa de<br>Ilhas de Calor</h1>
+      <p class="site-subtitle">Porto Alegre e Região Metropolitana — Rio Grande do Sul</p>
+    </div>
+    <div class="live-indicator">
+      <span class="live-dot"></span>
+      DADOS AO VIVO
+    </div>
+  </div>
+  <div class="header-divider"></div>
+</header>
+
+<main class="container">
+
+  <!-- Navegação -->
+  <nav class="map-nav">
+    <a href="index.html">← Ranking</a>
+    <a href="mapa.html" class="active">🗺 Mapa Térmico</a>
+  </nav>
+
+  <div class="map-layout">
+
+    <!-- Mapa principal -->
+    <div id="map-container">
+      <div class="map-card fade-in">
+        <div class="map-header">
+          <div class="card-title" style="margin-bottom:0">Distribuição Térmica por Zona</div>
+          <div class="live-indicator" style="font-size:10px">
+            <span class="live-dot"></span>
+            Clique em uma região
+          </div>
+        </div>
+
+        <div class="map-tabs">
+          <button class="map-tab active" onclick="alternarVis('temperatura', this)">Temperatura</button>
+          <button class="map-tab" onclick="alternarVis('umidade', this)">Umidade</button>
+          <button class="map-tab" onclick="alternarVis('heatscore', this)">HeatScore</button>
+        </div>
+
+        <div id="leaflet-map"></div>
+
+        <div class="rs-info" id="rs-info">
+          Porto Alegre — 30°01'S 51°13'W · Clique em uma zona para ver os dados do sensor
+        </div>
+      </div>
+    </div>
+
+    <!-- Painel lateral -->
+    <div>
+      <!-- Legenda -->
+      <div class="legenda-card fade-in">
+        <div class="legenda-title">Legenda Térmica</div>
+
+        <div id="legenda-items">
+          <!-- preenchido pelo JS -->
+        </div>
+
+        <!-- Painel de região selecionada -->
+        <div class="regiao-panel" id="regiao-panel">
+          <div class="regiao-panel-title" id="rp-nome">—</div>
+          <div class="regiao-panel-metrics">
+            <div class="rp-metric">
+              <div class="rp-label">HeatScore</div>
+              <div class="rp-value" id="rp-score" style="color: var(--accent-orange)">—</div>
+            </div>
+            <div class="rp-metric">
+              <div class="rp-label">Nível</div>
+              <div class="rp-value" id="rp-class" style="font-size:12px">—</div>
+            </div>
+            <div class="rp-metric">
+              <div class="rp-label">Temp. Média</div>
+              <div class="rp-value" id="rp-temp" style="color: var(--accent-red)">—</div>
+            </div>
+            <div class="rp-metric">
+              <div class="rp-label">Umidade</div>
+              <div class="rp-value" id="rp-umid" style="color: var(--accent-blue)">—</div>
+            </div>
+          </div>
+          <a href="#" class="rp-link" id="rp-link">Ver análise completa →</a>
+        </div>
+      </div>
+
+      <!-- Cards rápidos das regiões -->
+      <div style="margin-top: 16px;" id="regioes-sidebar"></div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  ODS 11 · ODS 13 — Monitor Térmico Urbano · Porto Alegre, RS
+</footer>
+
+<script>
+const API = 'http://localhost:8000';
+
+// Coordenadas reais das zonas de Porto Alegre
+const ZONAS = {
+  'Norte': {
+    lat: -29.98, lng: -51.18,
+    bairros: 'Sarandi, Rubem Berta, Passo das Pedras',
+    cor_base: '#ff2d55',
+    raio: 4500
+  },
+  'Sul': {
+    lat: -30.14, lng: -51.22,
+    bairros: 'Cristal, Vila Nova, Belém Novo',
+    cor_base: '#30d158',
+    raio: 4000
+  },
+  'Leste': {
+    lat: -30.04, lng: -51.10,
+    bairros: 'Moinhos de Vento, Petrópolis, Bela Vista',
+    cor_base: '#ff6b35',
+    raio: 3500
+  },
+  'Oeste': {
+    lat: -30.06, lng: -51.28,
+    bairros: 'Restinga, Lomba do Pinheiro, Rubem Berta',
+    cor_base: '#ffd60a',
+    raio: 4200
+  }
+};
+
+const LEGENDAS = {
+  temperatura: [
+    { label: 'Crítico',   range: '> 38°C',    cor: '#ff2d55' },
+    { label: 'Alto',      range: '35–38°C',   cor: '#ff6b35' },
+    { label: 'Moderado',  range: '30–35°C',   cor: '#ffd60a' },
+    { label: 'Normal',    range: '< 30°C',    cor: '#30d158' },
+  ],
+  umidade: [
+    { label: 'Muito seco',  range: '< 30%',   cor: '#ff2d55' },
+    { label: 'Seco',        range: '30–50%',  cor: '#ff6b35' },
+    { label: 'Moderado',    range: '50–70%',  cor: '#ffd60a' },
+    { label: 'Úmido',       range: '> 70%',   cor: '#30d158' },
+  ],
+  heatscore: [
+    { label: 'Crítica',   range: '75–100',  cor: '#ff2d55' },
+    { label: 'Alta',      range: '50–74',   cor: '#ff6b35' },
+    { label: 'Moderada',  range: '25–49',   cor: '#ffd60a' },
+    { label: 'Baixa',     range: '0–24',    cor: '#30d158' },
+  ]
+};
+
+let modoVis    = 'temperatura';
+let dadosAPI   = {};
+let circles    = {};
+let mapaLeaflet;
+
+// ── Inicializa mapa Leaflet ──────────────────────────────────────
+function inicializarMapa() {
+  mapaLeaflet = L.map('leaflet-map', {
+    center: [-30.05, -51.18],
+    zoom: 12,
+    zoomControl: true,
+    attributionControl: true
+  });
+
+  // Tile escuro estilo IBGE/cartográfico
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(mapaLeaflet);
+
+  // Contorno aproximado de Porto Alegre
+  const poaContorno = [
+    [-29.94, -51.30], [-29.92, -51.22], [-29.95, -51.10],
+    [-30.01, -51.06], [-30.08, -51.08], [-30.17, -51.12],
+    [-30.22, -51.18], [-30.20, -51.28], [-30.12, -51.35],
+    [-30.03, -51.35], [-29.97, -51.33], [-29.94, -51.30]
+  ];
+
+  L.polygon(poaContorno, {
+    color: '#00b4ff',
+    weight: 1.5,
+    opacity: 0.4,
+    fillColor: '#00b4ff',
+    fillOpacity: 0.03,
+    dashArray: '6, 4'
+  }).addTo(mapaLeaflet).bindTooltip('Porto Alegre — RS', {
+    permanent: false,
+    className: 'leaflet-tooltip-dark',
+    direction: 'top'
+  });
+
+  // Label central
+  L.marker([-30.05, -51.22], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="
+        font-family: Orbitron, monospace;
+        font-size: 10px;
+        letter-spacing: 2px;
+        color: #00b4ff66;
+        text-transform: uppercase;
+        white-space: nowrap;
+        pointer-events: none;
+      ">Porto Alegre</div>`,
+      iconAnchor: [50, 0]
+    })
+  }).addTo(mapaLeaflet);
+}
+
+// ── Cor por valor e modo ────────────────────────────────────────
+function obterCor(dados, modo) {
+  if (!dados) return '#3a6a8a';
+
+  if (modo === 'temperatura') {
+    const t = dados.media_temp || 0;
+    if (t > 38)  return '#ff2d55';
+    if (t > 35)  return '#ff6b35';
+    if (t > 30)  return '#ffd60a';
+    return '#30d158';
+  }
+
+  if (modo === 'umidade') {
+    const u = dados.umid_media || 50;
+    if (u < 30)  return '#ff2d55';
+    if (u < 50)  return '#ff6b35';
+    if (u < 70)  return '#ffd60a';
+    return '#30d158';
+  }
+
+  if (modo === 'heatscore') {
+    const s = dados.score || 0;
+    if (s >= 75) return '#ff2d55';
+    if (s >= 50) return '#ff6b35';
+    if (s >= 25) return '#ffd60a';
+    return '#30d158';
+  }
+
+  return '#3a6a8a';
+}
+
+function classeCSS(c) {
+  return (c || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+// ── Renderiza círculos no mapa ──────────────────────────────────
+function renderizarCirculos() {
+  // Remove TODAS as camadas antigas individualmente
+  // circles[nome] = { circle, marker, heatCircle, labelMarker }
+  Object.values(circles).forEach(({ circle, marker, heatCircle, labelMarker }) => {
+    if (circle)      mapaLeaflet.removeLayer(circle);
+    if (marker)      mapaLeaflet.removeLayer(marker);
+    if (heatCircle)  mapaLeaflet.removeLayer(heatCircle);
+    if (labelMarker) mapaLeaflet.removeLayer(labelMarker);
+  });
+  circles = {};
+
+  Object.entries(ZONAS).forEach(([nome, zona]) => {
+    const dados  = dadosAPI[nome];
+    const cor    = obterCor(dados, modoVis);
+    const score  = dados?.score || 0;
+    const raio   = zona.raio + (score * 20);
+
+    // Círculo de calor (heatmap visual)
+    const heatCircle = L.circle([zona.lat, zona.lng], {
+      radius: raio * 1.8,
+      color: 'transparent',
+      fillColor: cor,
+      fillOpacity: 0.08,
+      interactive: false
+    }).addTo(mapaLeaflet);
+
+    // Círculo principal
+    const circle = L.circle([zona.lat, zona.lng], {
+      radius: raio,
+      color: cor,
+      weight: 2,
+      opacity: 0.8,
+      fillColor: cor,
+      fillOpacity: 0.25,
+    }).addTo(mapaLeaflet);
+
+    // Marcador central
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="
+        background: ${cor}22;
+        border: 2px solid ${cor};
+        border-radius: 50%;
+        width: 36px; height: 36px;
+        display: flex; align-items: center; justify-content: center;
+        font-family: Orbitron, monospace;
+        font-size: 11px; font-weight: 700;
+        color: ${cor};
+        box-shadow: 0 0 12px ${cor}66;
+        cursor: pointer;
+      ">${score}</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
+    });
+
+    const marker = L.marker([zona.lat, zona.lng], { icon })
+      .addTo(mapaLeaflet);
+
+    // Label da zona — agora salvo para poder remover depois
+    const labelIcon = L.divIcon({
+      className: '',
+      html: `<div style="
+        font-family: Orbitron, monospace;
+        font-size: 9px;
+        letter-spacing: 2px;
+        color: ${cor}cc;
+        text-transform: uppercase;
+        white-space: nowrap;
+        margin-top: 4px;
+        text-shadow: 0 0 8px ${cor}88;
+      ">Zona ${nome}</div>`,
+      iconAnchor: [30, -22]
+    });
+
+    const labelMarker = L.marker([zona.lat, zona.lng], { icon: labelIcon, interactive: false })
+      .addTo(mapaLeaflet);
+
+    // Popup
+    const popupContent = dados ? `
+      <div class="popup-title">Zona ${nome}</div>
+      <div style="font-size:10px; color:#3a6a8a; margin-bottom:8px; letter-spacing:1px">
+        ${zona.bairros}
+      </div>
+      <div class="popup-row">
+        <span>HeatScore</span>
+        <span style="color:${cor}">${dados.score}</span>
+      </div>
+      <div class="popup-row">
+        <span>Classificação</span>
+        <span>${dados.classificacao || '—'}</span>
+      </div>
+      <div class="popup-row">
+        <span>Temp. Média</span>
+        <span>${dados.media_temp}°C</span>
+      </div>
+      <div class="popup-row">
+        <span>Umidade Média</span>
+        <span>${dados.umid_media || '—'}%</span>
+      </div>
+      <div class="popup-row">
+        <span>Acima 35°C</span>
+        <span>${dados.percentual_critico}%</span>
+      </div>
+      <div class="popup-score" style="background:${cor}22; color:${cor}; border:1px solid ${cor}44;">
+        ${dados.classificacao?.toUpperCase() || 'SEM DADOS'}
+      </div>
+    ` : `
+      <div class="popup-title">Zona ${nome}</div>
+      <div style="color:#3a6a8a; font-size:12px">Sem dados disponíveis</div>
+    `;
+
+    circle.bindPopup(popupContent, { maxWidth: 220 });
+    marker.bindPopup(popupContent, { maxWidth: 220 });
+
+    // Clique → painel lateral
+    const aoClicar = () => mostrarPainelRegiao(nome, dados);
+    circle.on('click', aoClicar);
+    marker.on('click', aoClicar);
+
+    // Salva TODAS as camadas para remoção correta no próximo render
+    circles[nome] = { circle, marker, heatCircle, labelMarker };
+  });
+}
+
+// ── Painel lateral ao clicar ────────────────────────────────────
+function mostrarPainelRegiao(nome, dados) {
+  if (!dados) return;
+
+  const panel = document.getElementById('regiao-panel');
+  panel.classList.add('visible');
+
+  const cls = classeCSS(dados.classificacao || 'baixa');
+  const cores = {
+    baixa: 'var(--accent-green)',
+    moderada: 'var(--accent-yellow)',
+    alta: 'var(--accent-orange)',
+    critica: 'var(--accent-red)'
+  };
+  const cor = cores[cls] || 'var(--accent-blue)';
+
+  document.getElementById('rp-nome').textContent     = `Zona ${nome}`;
+  document.getElementById('rp-score').textContent    = dados.score;
+  document.getElementById('rp-score').style.color    = cor;
+  document.getElementById('rp-class').textContent    = dados.classificacao || '—';
+  document.getElementById('rp-class').style.color    = cor;
+  document.getElementById('rp-temp').textContent     = `${dados.media_temp}°C`;
+  document.getElementById('rp-umid').textContent     = `${dados.umid_media || '—'}%`;
+  document.getElementById('rp-link').href            = `regiao.html?nome=${encodeURIComponent(nome)}`;
+
+  document.getElementById('rs-info').textContent =
+    `Zona ${nome} — ${ZONAS[nome]?.bairros || ''} · HeatScore: ${dados.score}`;
+}
+
+// ── Legenda dinâmica ────────────────────────────────────────────
+function renderizarLegenda() {
+  const container = document.getElementById('legenda-items');
+  container.innerHTML = '';
+
+  LEGENDAS[modoVis].forEach(item => {
+    container.innerHTML += `
+      <div class="legenda-item">
+        <div class="legenda-dot" style="background:${item.cor}; box-shadow: 0 0 8px ${item.cor}66"></div>
+        <div class="legenda-info">
+          <div class="legenda-label">${item.label}</div>
+          <div class="legenda-range">${item.range}</div>
+        </div>
+      </div>
+    `;
+  });
+}
+
+// ── Cards rápidos sidebar ───────────────────────────────────────
+function renderizarSidebar(ranking) {
+  const container = document.getElementById('regioes-sidebar');
+  container.innerHTML = '';
+
+  ranking.forEach((item, i) => {
+    const cls = classeCSS(item.classificacao);
+    container.innerHTML += `
+      <a href="regiao.html?nome=${encodeURIComponent(item.regiao)}"
+         style="display:flex; align-items:center; gap:12px; padding:12px 16px;
+                background:var(--bg-card); border:1px solid var(--border);
+                border-radius:var(--radius); margin-bottom:8px;
+                text-decoration:none; color:inherit;
+                transition: border-color 0.2s, transform 0.2s;"
+         onmouseover="this.style.borderColor='var(--border-glow)';this.style.transform='translateX(4px)'"
+         onmouseout="this.style.borderColor='var(--border)';this.style.transform='none'">
+        <span style="font-family:Orbitron,monospace; font-size:11px;
+                     color:var(--text-muted); width:16px; text-align:center">${i+1}</span>
+        <div style="flex:1">
+          <div style="font-size:13px; font-weight:600; margin-bottom:2px">${item.regiao}</div>
+          <div style="font-size:10px; color:var(--text-muted); letter-spacing:1px">
+            ${ZONAS[item.regiao]?.bairros?.split(',')[0] || ''}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:Orbitron,monospace; font-size:16px;
+                      font-weight:700" class="score-${cls}">${item.score}</div>
+          <div class="badge badge-${cls}" style="font-size:9px; padding:2px 8px">
+            ${item.classificacao}
+          </div>
+        </div>
+      </a>
+    `;
+  });
+}
+
+// ── Alterna modo de visualização ────────────────────────────────
+function alternarVis(modo, btn) {
+  modoVis = modo;
+
+  document.querySelectorAll('.map-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  renderizarLegenda();
+  renderizarCirculos();
+}
+
+// ── Carrega dados da API ────────────────────────────────────────
+async function carregarDados() {
+  try {
+    const res     = await fetch(`${API}/ranking`);
+    const ranking = await res.json();
+
+    // Busca umidade de cada região em paralelo
+    const detalhes = await Promise.all(
+      ranking.map(r => fetch(`${API}/regiao/${encodeURIComponent(r.regiao)}`).then(x => x.json()))
+    );
+
+    ranking.forEach((item, i) => {
+      const hist = detalhes[i]?.historico || [];
+      const umidMedia = hist.length
+        ? (hist.reduce((s, m) => s + m.umidade, 0) / hist.length).toFixed(1)
+        : null;
+
+      dadosAPI[item.regiao] = { ...item, umid_media: umidMedia };
+    });
+
+    renderizarCirculos();
+    renderizarSidebar(ranking);
+
+  } catch (e) {
+    console.error('Erro ao carregar dados:', e);
+    document.getElementById('rs-info').textContent =
+      'Erro ao conectar com a API. Verifique se o servidor está rodando.';
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+inicializarMapa();
+renderizarLegenda();
+carregarDados();
+setInterval(carregarDados, 30000);
+</script>
+
+</body>
+</html>
